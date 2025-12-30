@@ -221,6 +221,7 @@ function ReputationGuide:getRepInfo(info)
           return info
         else
           info["current"] = 0
+          info["renown"] = 1
           info["maximum"] = 0
           info["standingText"] = REP_TXT.renown
           return info
@@ -243,6 +244,12 @@ function ReputationGuide:getRepInfo(info)
     if ReputationGuide.AfterWoD then
       if (REP_Orig_IsFactionParagon(info.factionID)) then
         local currentValue, threshold, _, hasRewardPending = REP_Orig_GetFactionParagonInfo(info.factionID);
+
+        if not currentValue then currentValue = 0 end
+        if not threshold then threshold = 10000 end
+
+        -- ((math.floor(currentValue/threshold)*threshold)/10000) - (hasRewardPending and 1 or 0)
+        -- local realValue = currentValue % threshold
         local paragonLevel = (currentValue - (currentValue % threshold))/threshold
         info["standingText"] = ReputationGuide:getFactionLabel("paragon")
         
@@ -268,6 +275,7 @@ function ReputationGuide:getRepInfo(info)
         info["maximum"] = threshold
         info["bottom"] = info["top"] + paragonLevel * threshold
         info["top"] = info["bottom"] + threshold
+
         return info
       end  
     end

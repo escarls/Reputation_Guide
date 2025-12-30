@@ -12,7 +12,7 @@ ReputationGuide.hasParagonReputationLoaded = false
 ReputationGuide.hasInactiveReputationHeadersLoaded = false
 
 function ReputationGuide:GetExternalAddonsStatus()
-  if ReputationGuide.AfterCata then
+  if (C_AddOns and type(C_AddOns.IsAddOnLoaded) == "function") then
     ReputationGuide.hasElvUILoaded = C_AddOns.IsAddOnLoaded("ElvUI")
     ReputationGuide.hasPrettyRepsLoaded = C_AddOns.IsAddOnLoaded("PrettyReps")
     ReputationGuide.hasParagonReputationLoaded = C_AddOns.IsAddOnLoaded("ParagonReputation")

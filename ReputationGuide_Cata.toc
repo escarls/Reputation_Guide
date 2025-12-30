@@ -2,9 +2,20 @@
 ## IconTexture: Interface/Addons/ReputationGuide/assets/factions_logo_256x256
 ## Name: ReputationGuide
 ## Author: Tvlfrosty
+## Category: User Interface
+## Category-deDE: Benutzerinterface
+## Category-esES: Interfaz de usuario
+## Category-esMX: Interfaz de usuario
+## Category-frFR: Interface utilisateur
+## Category-itIT: Interfaccia utente
+## Category-koKR: 사용자 인터페이스
+## Category-ptBR: Interface do usuário
+## Category-ruRU: Интерфейс пользователя
+## Category-zhCN: 用户界面
+## Category-zhTW: 使用者介面
 ## Description: ReputationGuide helps you manage your reputations by showing a more detailed reputation screen per faction.
 ## Notes: ReputationGuide helps you manage your reputations.
-## Version: 4.4.2-release
+## Version: full-1.5.9-release
 ## Interface: 40402
 ## X-Curse-Project-ID: 657534
 ## SavedVariables: REP_Data

@@ -318,11 +318,19 @@ function REP_InitEnFactionGains(guildName, guildCapBase)
 		REP_AddMob(529, 4, 6, "Elites and Shadowmages Plaguelands", 5)
 		REP_AddMob(529, 4, 6, "Cauldron Lords", 12)
 		if(ReputationGuide.IsClassic) then
-			REP_AddMob(529, 4, 7, "Trash mobs in Stratholme and Scholomance", 5)
+      REP_AddMob(529, 4, 6, 1, 5, zone.Stratholme)
+      REP_AddMob(529, 4, 6, 1, 5, 'ScholomanceOLD')
+			-- REP_AddMob(529, 4, 7, "Trash mobs in Stratholme and Scholomance", 5)
+      -- REP_AddMob(529, 4, 7, "Trash mobs in Stratholme and Scholomance", 5)
 		else
-			REP_AddMob(529, 4, 8, "Trash mobs in Stratholme and Scholomance", 5)
+      REP_AddMob(529, 4, 6, 1, 10, zone.Stratholme)
+      REP_AddMob(529, 4, 6, 1, 10, 'ScholomanceOLD')
+			-- REP_AddMob(529, 4, 8, "Trash mobs in Stratholme and Scholomance", 5)
 		end
-		REP_AddMob(529, 4, 8, "Bosses in Stratholme and Scholomance", 25)
+    
+		REP_AddMob(529, 4, 8, 3, 25, zone.Stratholme)
+    REP_AddMob(529, 4, 8, 3, 25, 'ScholomanceOLD')
+		-- REP_AddMob(529, 4, 8, "Bosses in Stratholme and Scholomance", 25)
 	else
 		---- Quests
 	  REP_AddQuest(529, 7, 8, "Aberrations of Bone", 2000) -- Aberrations of Bone QuestID: 28756
@@ -560,26 +568,27 @@ function REP_InitEnFactionGains(guildName, guildCapBase)
 			REP_AddQuest(59, 6, 8, 6643, 500, {[17010] = 1}) -- Favor Amongst the Brotherhood, Fiery Core QuestID: 6643
 			REP_AddQuest(59, 6, 8, 6644, 500, {[17011] = 1}) -- Favor Amongst the Brotherhood, Lava Core QuestID: 6644
     else
-      REP_AddQuest(59, 6, 8, 6642, 1200, {[11370] = 10}) -- Favor Amongst the Brotherhood, Dark Iron Ore QuestID: 6642
-      REP_AddQuest(59, 6, 8, 6645, 1400, {[17012] = 2}) -- Favor Amongst the Brotherhood, Core Leather QuestID: 6645
-      REP_AddQuest(59, 6, 8, 6646, 2000, {[11382] = 1}) -- Favor Amongst the Brotherhood, Blood of the Mountain QuestID: 6646
-      REP_AddQuest(59, 6, 8, 6643, 2000, {[17010] = 1}) -- Favor Amongst the Brotherhood, Fiery Core QuestID: 6643
-      REP_AddQuest(59, 6, 8, 6644, 2000, {[17011] = 1}) -- Favor Amongst the Brotherhood, Lava Core QuestID: 6644
+      REP_AddQuest(59, 4, 8, 6642, 1200, {[11370] = 10}) -- Favor Amongst the Brotherhood, Dark Iron Ore QuestID: 6642
+      REP_AddQuest(59, 4, 8, 6645, 1400, {[17012] = 2}) -- Favor Amongst the Brotherhood, Core Leather QuestID: 6645
+      REP_AddQuest(59, 4, 8, 6646, 2000, {[11382] = 1}) -- Favor Amongst the Brotherhood, Blood of the Mountain QuestID: 6646
+      REP_AddQuest(59, 4, 8, 6643, 2000, {[17010] = 1}) -- Favor Amongst the Brotherhood, Fiery Core QuestID: 6643
+      REP_AddQuest(59, 4, 8, 6644, 2000, {[17011] = 1}) -- Favor Amongst the Brotherhood, Lava Core QuestID: 6644
     end
   end
-  if (not ReputationGuide.AfterTBC) then
-    REP_AddQuest(59, 5, 5, 7737, 25, {[18945] = 4}) -- Gaining Acceptance QuestID 7737
-  else
-    if (not ReputationGuide.AfterWotlk) then
+
+  if (not ReputationGuide.AfterWotlk) then
+    if (not ReputationGuide.AfterTBC) then
       REP_AddQuest(59, 4, 4, 7736, 25, {[18944] = 2, [3356] = 4, [3857] = 1}) -- Restoring Fiery Flux Supplies via Kingsblood QuestID: 7736
       REP_AddQuest(59, 4, 4, 8241, 25, {[18944] = 2, [3575] = 4, [3857] = 1}) -- Restoring Fiery Flux Supplies via Iron QuestID: 8241
       REP_AddQuest(59, 4, 4, 8242, 25, {[18944] = 2, [4234] = 10, [3857] = 1}) -- Restoring Fiery Flux Supplies via Heavy Leather QuestID: 8242
+      REP_AddQuest(59, 5, 5, 7737, 25, {[18945] = 4}) -- Gaining Acceptance QuestID 7737
+    else
       REP_AddQuest(59, 5, 5, 13662, 25, {[18945] = 4}) -- Gaining Acceptance QuestID 13662
       REP_AddQuest(59, 5, 5, 7737, 625, {[18945] = 100}) -- Gaining Even More Acceptance QuestID: 7737
-    else
-      REP_AddQuest(59, 7, 7, 13662, 60, {[18945] = 4}) -- Gaining Acceptance QuestID 13662
-      REP_AddQuest(59, 7, 7, 7737, 1500, {[18945] = 100}) -- Gaining Even More Acceptance QuestID: 7737
     end
+  else
+    REP_AddQuest(59, 7, 7, 13662, 60, {[18945] = 4}) -- Gaining Acceptance QuestID 13662
+    REP_AddQuest(59, 7, 7, 7737, 1500, {[18945] = 100}) -- Gaining Even More Acceptance QuestID: 7737
   end
 
 	---------------------------
@@ -675,21 +684,21 @@ function REP_InitEnFactionGains(guildName, guildCapBase)
 		REP_AddQuest(609, 4, 8, 8319, 100, {[20404] = 10}) -- Encrypted Twilight Texts QuestID: 8319
 		REP_AddQuest(609, 4, 8, "Mortal Champions", 100, {[21229] = 1}) -- Mortal Champions QuestID: 8579
     ---- Mobs
-	  REP_AddMob(609, 4, 5, "Any Twilight cultist mobs", 1)
-    REP_AddMob(609, 4, 6, "Twilight Flamereaver", 1)
-    REP_AddMob(609, 4, 6, "Twilight Keeper", 1)
-    REP_AddMob(609, 4, 6, "Twilight Lord Everun", 5)
-    REP_AddMob(609, 4, 6, "Twilight Prophet", 5)
+	  REP_AddMob(609, 4, 5, "Any Twilight cultist mobs", 1, zone.Silithus)
+    REP_AddMob(609, 4, 6, "Twilight Flamereaver", 1, zone.Silithus)
+    REP_AddMob(609, 4, 6, "Twilight Keeper", 1, zone.Silithus)
+    REP_AddMob(609, 4, 6, "Twilight Lord Everun", 5, zone.Silithus)
+    REP_AddMob(609, 4, 6, "Twilight Prophet", 5, zone.Silithus)
 	else
     ---- Quests
 		REP_AddQuest(609, 4, 8, 8319, 500, {[20404] = 10}) -- Encrypted Twilight Texts QuestID: 8319
 		REP_AddQuest(609, 4, 8, "Mortal Champions", 250, {[21229] = 1}) -- Mortal Champions QuestID: 8579
     ---- Mobs
-    REP_AddMob(609, 4, 5, "Any Twilight cultist mobs", 10)
-    REP_AddMob(609, 4, 6, "Twilight Flamereaver", 10)
-    REP_AddMob(609, 4, 6, "Twilight Keeper", 10)
-    REP_AddMob(609, 4, 6, "Twilight Lord Everun", 10)
-    REP_AddMob(609, 4, 6, "Twilight Prophet", 30)
+    REP_AddMob(609, 4, 5, "Any Twilight cultist mobs", 10, zone.Silithus)
+    REP_AddMob(609, 4, 6, "Twilight Flamereaver", 10, zone.Silithus)
+    REP_AddMob(609, 4, 6, "Twilight Keeper", 10, zone.Silithus)
+    REP_AddMob(609, 4, 6, "Twilight Lord Everun", 10, zone.Silithus)
+    REP_AddMob(609, 4, 6, "Twilight Prophet", 30, zone.Silithus)
 	end
   if (not ReputationGuide.AfterWotlk) then
     ---- Quests
@@ -709,9 +718,9 @@ function REP_InitEnFactionGains(guildName, guildCapBase)
       end
     end
     ---- Mobs
-    REP_AddMob(609, 4, 8, "Abyssal Templars (lesser windstones)", 5)
-    REP_AddMob(609, 4, 8, "Abyssal Dukes (windstones)", 25)
-    REP_AddMob(609, 4, 8, "Abyssal Lords (greater windstones)", 50)
+    REP_AddMob(609, 4, 8, "Abyssal Templars (lesser windstones)", 5, zone.Silithus)
+    REP_AddMob(609, 4, 8, "Abyssal Dukes (windstones)", 25, zone.Silithus)
+    REP_AddMob(609, 4, 8, "Abyssal Lords (greater windstones)", 50, zone.Silithus)
   end
 
 	---------------------------
@@ -3600,13 +3609,17 @@ end
 		-- Shado-Pan Assault 1435 --
 		---------------------------
 		---- Mobs
-		REP_AddMob(1435, 1, 5, 1, 30, zone.Throne_of_Thunder)
-		REP_AddMob(1435, 1, 8, 3, 30, zone.Throne_of_Thunder)
+		REP_AddMob(1435, 1, 4, 1, 30, zone.Throne_of_Thunder)
+		REP_AddMob(1435, 1, 8, 2, 300, zone.Throne_of_Thunder)
+    REP_AddMob(1435, 1, 8, "Ra-den", 500, zone.Throne_of_Thunder)
 		---- Quests
-		REP_AddQuest(1435, 1, 8, 32640, 300, {[94221] = 3})
-		REP_AddQuest(1435, 1, 8, 32641, 300, {[94221] = 3})
-		REP_AddQuest(1435, 1, 8, 32707, 200, {[94221] = 3})
-		REP_AddQuest(1435, 1, 8, 32708, 300)
+    if ReputationGuide.IsAlliance then
+      REP_AddQuest(1435, 1, 8, 32640, 300, {[94221] = 3}) -- QuestID: 32640 Champions of the Thunder King
+    else
+      REP_AddQuest(1435, 1, 8, 32641, 300, {[94221] = 3}) -- QuestID: 32641 Champions of the Thunder King
+    end		
+		-- REP_AddQuest(1435, 1, 8, 32707, 200, {[94221] = 3}) -- QuestID: 32707 Secrets in the Isle of Thunder
+		-- REP_AddQuest(1435, 1, 8, 32708, 300) -- QuestID: 32708 Setting the Trap
 		if (ReputationGuide.AfterWoD) then
 		-- Timewalking Commendation
 		REP_AddItems(1435, 1, 8, 300, {[143945] = 1})
