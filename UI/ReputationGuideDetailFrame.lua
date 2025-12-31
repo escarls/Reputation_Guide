@@ -469,25 +469,34 @@ function REP:FillReputationDetailFrameWithData()
     end
   end
 
-  if isParagon then
-    colorID = 9
-    color = REP.FACTION_BAR_COLORS[colorID]
-    REP_DetailStandingName:SetText(REP_TXT.STAND_LV[9])
-  else
-    if isMajorFaction then
+  if isMajorFaction then
+    local isCapped = REP_Orig_HasMaximumRenown(factionID)
+
+    if isCapped and isParagon then
+      colorID = 9
+      color = REP.FACTION_BAR_COLORS[colorID]
+      REP_DetailStandingName:SetText(REP_TXT.STAND_LV[9])
+    else
       color = BLUE_FONT_COLOR
-      factionStandingtext = REP_TXT.renown.." "..standingID
-    else      
+      REP_DetailStandingName:SetText(REP_TXT.renown.." "..standingID)
+    end
+  else
+    if isParagon then
+      colorID = 9
+      color = REP.FACTION_BAR_COLORS[colorID]
+      REP_DetailStandingName:SetText(REP_TXT.STAND_LV[9])
+    else
       if isFriend then
         colorID = 5
       else
         colorID = standingID
-      end  
-      color = REP.FACTION_BAR_COLORS[colorID]
-    end
+      end
 
-    REP_DetailStandingName:SetText(factionStandingtext)
+      color = REP.FACTION_BAR_COLORS[colorID]
+      REP_DetailStandingName:SetText(factionStandingtext)
+    end
   end
+
   REP_DetailStandingName:SetTextColor(color.r, color.g, color.b)
 
   -----------------------------------------------------------------
@@ -528,7 +537,7 @@ function REP:FillReputationDetailFrameWithData()
     local renownLevel = majorFactionData.renownLevel
     barMax = majorFactionData.renownLevelThreshold
     barValue = ((renownLevel - 1) *  majorFactionData.renownLevelThreshold) + barValue
-    isCapped = REP_Orig_HasMaximumRenown(factionID)
+    local isCapped = REP_Orig_HasMaximumRenown(factionID)
 
     local maxFactionLevel = 25
 

@@ -373,6 +373,10 @@ function ReputationGuide:ShowReputationTooltip(frame, factionID)
     factionName = factionData.name
   end
 
+  if (not factionData.description) then
+    factionData.description = ""
+  end
+
   GameTooltip:SetOwner(frame, "ANCHOR_CURSOR", 0, 40)
   GameTooltip:ClearLines()
   GameTooltip:AddLine(factionName)

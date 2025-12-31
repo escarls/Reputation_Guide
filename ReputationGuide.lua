@@ -127,12 +127,7 @@ function REP:SetOriginalFunctionsBasedOnExpansion()
     REP_Orig_GetNumFactions = GetNumFactions
     REP_Orig_GetFactionDataByIndex = GetFactionInfo
 
-    if REP.IsClassic then
-      if not REP_Orig_CollapseFactionHeader and type(CollapseFactionHeader) == "function" then
-        REP_Orig_CollapseFactionHeader = CollapseFactionHeader
-        CollapseFactionHeader = REP_CollapseFactionHeader
-      end
-    else
+    if not REP_Orig_CollapseFactionHeader and type(CollapseFactionHeader) == "function" then
       REP_Orig_CollapseFactionHeader = CollapseFactionHeader
       CollapseFactionHeader = REP_CollapseFactionHeader
     end
@@ -156,12 +151,7 @@ function REP:SetOriginalFunctionsBasedOnExpansion()
       REP_Orig_ExpandAllFactionHeaders = ExpandAllFactionHeaders
     end
 
-    if REP.IsClassic then
-      if not REP_Orig_ExpandFactionHeader and type(ExpandFactionHeader) == "function" then
-        REP_Orig_ExpandFactionHeader = ExpandFactionHeader
-        ExpandFactionHeader = REP_ExpandFactionHeader
-      end
-    else
+    if not REP_Orig_ExpandFactionHeader and type(ExpandFactionHeader) == "function" then
       REP_Orig_ExpandFactionHeader = ExpandFactionHeader
       ExpandFactionHeader = REP_ExpandFactionHeader
     end
@@ -204,7 +194,8 @@ function REP_OnEvent(self, event, ...)
 
   if (event == "LOADING_SCREEN_DISABLED") then
     REP_OnLoadingScreen = false
-    REP:DumpReputationChangesToChatForAllFactions() -- Just to make sure we don't miss printing out any rep gain that occured during the loading screen
+    -- Removed due to it causing some random situations where the script takes too long, might look for long term fix later on.
+    -- REP:DumpReputationChangesToChatForAllFactions() -- Just to make sure we don't miss printing out any rep gain that occured during the loading screen
   end
 
   local arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13 = ...
@@ -336,7 +327,7 @@ function REP_OnEvent(self, event, ...)
       REP_BuildUpdateList()
       REP_UpdateList_Update()
     end
-  elseif (event == "UNIT_AURA") then
+  elseif (event == "UNIT_AURA" and not InCombatLockdown()) then
     REP:CheckActiveReputationBuffs()
   elseif (event == "GARRISON_UPDATE") then
     -- Get garrison buildings to check for trading post
@@ -406,7 +397,7 @@ function REP:Init()
   end
 
   local version
-  if REP.AfterCata then
+  if (C_AddOns and type(C_AddOns.GetAddOnMetadata) == "function") then
     version = C_AddOns.GetAddOnMetadata("ReputationGuide", "Version")
   else
     version = GetAddOnMetadata("ReputationGuide", "Version")
@@ -1022,11 +1013,11 @@ function REP:InitMapName(fimap, returnMapNameAsString)
     else
       local mapObj
       local mapName
-      if C_Map then
+      if C_Map and type(C_Map.GetMapInfo) == "function" then
         mapObj = C_Map.GetMapInfo(fimap)
 
         if mapObj then mapName = mapObj.name end
-      elseif GetMapInfo then
+      elseif type(GetMapInfo) == "function" then
         mapObj = GetMapInfo(fimap)
 
         if mapObj then mapName = mapObj.name end
@@ -1034,9 +1025,17 @@ function REP:InitMapName(fimap, returnMapNameAsString)
 
       map = mapName
     end
+
+    if not map and type(GetRealZoneText) == "function" then
+      map = GetRealZoneText(fimap)
+    end
+  else
+    if fimap == "ScholomanceOLD" and type(GetRealZoneText) == "function" then
+      map = GetRealZoneText(289) -- Fix for scholomance not properly returning with 306-309, and default 289 is blackwing lair.
+    end
   end
 
-  if returnMapNameAsString and not map then
+  if (not map or map == "") and returnMapNameAsString then
     map = fimap
   end
 
@@ -2837,7 +2836,7 @@ function REP:Quest_Items(itemsNeed, currentQuestTimesBag, currentQuestTimesBagBa
   end
 
   if (type(item) == "number") then
-    if REP.AfterCata then
+    if C_CurrencyInfo and type(C_CurrencyInfo.GetCurrencyInfo) == "function" then
       currencyInfo = C_CurrencyInfo.GetCurrencyInfo(item)
     else
       currencyInfo = GetCurrencyInfo(item)
@@ -3146,9 +3145,9 @@ function REP:DumpReputationChangesToChatForAllFactions(initOnly)
     if not REP.factions or REP:GetTableCount(REP.factions) == 0 then return end
 
     for k, v in pairs(REP.factions) do
-      local currentOld = v.info.current + v.info.bottom
+      local currentOld = v.info.current or 0 + v.info.bottom
       local info = REP:getRepInfo(v.info)
-      local change = (info.current + info.bottom) - currentOld
+      local change = (info.current or 0 + info.bottom) - currentOld
 
       if info.isWatched then
         if REP.AfterClassic and (C_Reputation.SetWatchedFaction or REP.AfterDragonflight) then
