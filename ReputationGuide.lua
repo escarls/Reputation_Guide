@@ -26,6 +26,9 @@ REP_FactionGain = {}
 ---- Tracking data
 REP_Entries = {}
 
+REP._pendingRepUpdate = false
+REP._repUpdateTimer = nil
+
 ------------------------
 -- 01 Addon Startup --
 ------------------------
@@ -196,6 +199,7 @@ function REP_OnEvent(self, event, ...)
     REP_OnLoadingScreen = false
     -- Removed due to it causing some random situations where the script takes too long, might look for long term fix later on.
     -- REP:DumpReputationChangesToChatForAllFactions() -- Just to make sure we don't miss printing out any rep gain that occured during the loading screen
+    REP:TakeReputationSnapshot()
   end
 
   local arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13 = ...
@@ -245,7 +249,7 @@ function REP_OnEvent(self, event, ...)
     REP_Main:RegisterEvent("QUEST_WATCH_UPDATE")
     -- new chat hook system
     ChatFrame_AddMessageEventFilter("CHAT_MSG_COMBAT_FACTION_CHANGE", REP_ChatFilter)
-    -- ChatFrame_AddMessageEventFilter("COMBAT_TEXT_UPDATE", REP_ChatFilter)
+    ChatFrame_AddMessageEventFilter("COMBAT_TEXT_UPDATE", REP_ChatFilter)
     -- to keep dungeon Difficulty up to date
     if REP.AfterClassic then REP_Main:RegisterEvent("PLAYER_DIFFICULTY_CHANGED") end
     -- Recast for tradeskill
@@ -253,7 +257,7 @@ function REP_OnEvent(self, event, ...)
     -- to keep the Garrison up to date
     if REP.AfterMoP then REP_Main:RegisterEvent("GARRISON_UPDATE") end
 
-    if(REP.AfterBfA) then
+    if(ReputationGuide.AfterShadowLands) then
       REP_Main:RegisterEvent("MAJOR_FACTION_RENOWN_LEVEL_CHANGED")
       REP_Main:RegisterEvent("MAJOR_FACTION_UNLOCKED")
     end
@@ -280,25 +284,29 @@ function REP_OnEvent(self, event, ...)
 
     -- to keep the UI up to date based on expansion changes
     REP:MakeUIChanges()
-  elseif ((not REP.AfterShadowLands and (event == "UPDATE_FACTION" or event == "QUEST_COMPLETE" or event == "QUEST_WATCH_UPDATE")) or (REP.AfterShadowLands and (event == "UPDATE_FACTION"  or event == "QUEST_LOG_UPDATE" or event == "MAJOR_FACTION_RENOWN_LEVEL_CHANGED" or event == "MAJOR_FACTION_UNLOCKED"))) then    
+  elseif (REP:IsFactionUpdateEvent(event) or event == "QUEST_COMPLETE" or event == "QUEST_WATCH_UPDATE") then    
+    -- Only print reputation changes on faction updates
+    if REP:IsFactionUpdateEvent(event) then
+      if REP._pendingRepUpdate then return end
+
+      REP._pendingRepUpdate = true
+
+      REP._repUpdateTimer = C_Timer.After(0.1, function()
+        REP._pendingRepUpdate = false
+        REP._repUpdateTimer = nil
+
+        REP:DumpReputationChangesToChatOnUpdate()
+      end)
+    end
+    
     if (ReputationFrame:IsVisible() and not REP.AfterDragonflight) then
       ReputationFrame_Update()
     end
-    
-    -- if REP.AfterDragonflight then
-    --   ReputationFrame.ReputationDetailFrame:Hide()
-    -- else
-    --   -- REP:DumpReputationChangesToChatForAllFactions()
-    --   ReputationDetailFrame:Hide();
-    -- end
 
     if (REP_Orig_GetSelectedFaction() ~= 0 and REP_Orig_ReputationDetailFrame and REP_Orig_ReputationDetailFrame:IsVisible()) then
       REP_BuildUpdateList()
       REP_UpdateList_Update()
-    end    
-  elseif (event == "COMBAT_TEXT_UPDATE" and arg1 == "FACTION") then
-    local faction, change = GetCurrentCombatTextEventInfo()
-    REP:DumpReputationChangesToChatOnUpdate(faction, change)
+    end
   elseif (event == "BAG_UPDATE") then
     if (REP_Orig_ReputationDetailFrame and REP_Orig_ReputationDetailFrame:IsVisible() and not REP.AfterDragonflight) then
       -- Update rep frame (implicitely updates detail frame which In turn implicitely reparses bag contents)
@@ -3081,73 +3089,41 @@ end
 -----------------------------------
 -- 14 reputation Changes to chat --
 -----------------------------------
-function REP:DumpReputationChangesToChatOnUpdate(faction, change)
-  local info = {}
-  local factionID
-  local found = false
-
-  if faction == GUILD then
-    faction = tostring(REP.GuildName).." (guild)"
-    factionID = 1168
-    info["factionID"] = factionID
-  end  
-
-  info["faction"] = faction
-
-  for i, factionData in pairs(REP.factions) do
-    if factionData.info and ((factionData.info.faction and factionData.info.faction == faction) or (factionData.info.factionID and factionData.info.factionID == factionID)) then
-      found = true
-      info = factionData.info
-      info["new"] = false
-      break
-    end
-  end
-
-  if not found then info["new"] = true end
-
-  if type(change) == "number" then
-    info["change"] = math.abs(change)
-    if tonumber(change) < 0 then
-      info["negative"] = true
-    end
-  else
-    info["change"] = 0
-  end
+function REP:DumpReputationChangesToChatOnUpdate()
+  local changes = REP:DetectReputationChanges()
+  if not changes or #changes == 0 then return end
 
   if REP_Data.Global.ShowAllFactionsGains then
-    REP:DumpReputationChangesToChatForAllFactions()
-  else
-    if info.new then
-      info = REP:getFactionInfoForNewFaction(info)
-      REP:DumpReputationChangesToChatForSingleFaction(info)
-    else
-      info = REP:getFactionInfo(info)
-      REP:DumpReputationChangesToChatForSingleFaction(info)
-    end
+    REP:DumpReputationChangesToChatForAllFactions(changes)
+  else -- Print ONLY the last change
+    local last = changes[#changes]
+    if last then
+      REP:DumpReputationChangesToChatForSingleFaction(last.info)
 
-    if REP_Data.Global.SwitchFactionBar and not info.isWatched then
-      if REP.AfterClassic and (C_Reputation.SetWatchedFaction or REP.AfterDragonflight) then
-        REP:WatchFactionById(info.factionID)
-      else
-        local watchIndex = REP:GetFactionIndexBasedOnFactionID(info.factionID)
-        REP:WatchFactionByIndex(watchIndex)
+      if REP_Data.Global.SwitchFactionBar and not last.info.isWatched then
+        if REP.AfterClassic and (C_Reputation.SetWatchedFaction or REP.AfterDragonflight) then
+          REP:WatchFactionById(last.factionID)
+        else
+          local watchIndex = REP:GetFactionIndexBasedOnFactionID(last.factionID)
+          REP:WatchFactionByIndex(watchIndex)
+        end
       end
     end
   end
+
+  REP:TakeReputationSnapshot()
 end
 
-function REP:DumpReputationChangesToChatForAllFactions(initOnly)
+function REP:DumpReputationChangesToChatForAllFactions(changes)
   if (REP_OnLoadingScreen == false) then
     local factionIndex, watchIndex, watchID, watchedIndex, watchedID
     local name, standingID, barMin, barMax, barValue, isHeader, hasRep
     local factionID
 
-    if not REP.factions or REP:GetTableCount(REP.factions) == 0 then return end
+    if not changes then return end
 
-    for k, v in pairs(REP.factions) do
-      local currentOld = v.info.current or 0 + v.info.bottom
+    for _, v in ipairs(changes) do
       local info = REP:getRepInfo(v.info)
-      local change = (info.current or 0 + info.bottom) - currentOld
 
       if info.isWatched then
         if REP.AfterClassic and (C_Reputation.SetWatchedFaction or REP.AfterDragonflight) then
@@ -3157,25 +3133,13 @@ function REP:DumpReputationChangesToChatForAllFactions(initOnly)
         end
       end
 
-      -- if factionInfo.new and (change == 0) and (v.info.faction == factionInfo.faction) and (factionInfo.change ~= 0) then
-      --   change = factionInfo.change * ((factionInfo.negative and -1) or 1)
-      -- end
+      REP:DumpReputationChangesToChatForSingleFaction(info)
 
-      if change ~= 0 then
-        info.change = math.abs(change)
-        info.negative = change < 0
-        local session = REP:getFactionSession(info)
-        REP.factions[info.factionID].session = session
-        info.session = session
-        info.lastUpdated = time()
-        REP:DumpReputationChangesToChatForSingleFaction(info)
-
-        if (REP_Data.Global.SwitchFactionBar and not info.negative and (not REP_Data.Global.NoGuildSwitch or info.factionID ~= 1168)) then
-          if REP.AfterClassic and (C_Reputation.SetWatchedFaction or REP.AfterDragonflight) then
-            watchID = info.factionID
-          else
-            watchIndex = REP:GetFactionIndexBasedOnFactionID(info.factionID)
-          end
+      if (REP_Data.Global.SwitchFactionBar and not info.negative and (not REP_Data.Global.NoGuildSwitch or info.factionID ~= 1168)) then
+        if REP.AfterClassic and (C_Reputation.SetWatchedFaction or REP.AfterDragonflight) then
+          watchID = info.factionID
+        else
+          watchIndex = REP:GetFactionIndexBasedOnFactionID(info.factionID)
         end
       end
     end
@@ -3199,30 +3163,59 @@ function REP:DumpReputationChangesToChatForAllFactions(initOnly)
   end
 end
 
+function REP:PrintReputationChangesToChat(args)
+  if not args or not args.format or not args.name then return end
+
+  local format           = args.format
+  local name             = args.name
+  local change           = args.change or 0
+  local changeString     = args.changeString or ""
+  local session          = args.session or 0
+  local repToGo          = args.repToGo or 0
+  local nextStandingText = args.nextStandingText or ""
+
+  REP:Print(REP.NEW_REP_COLOUR..string.format(format, name, change, changeString, session, nextStandingText, repToGo))
+end
+
 function REP:DumpReputationChangesToChatForSingleFaction(info)
   if info == nil or info.name == nil then return end
 
   if (REP_Data.Global.WriteChatMessage and (not REP_Data.Global.NoGuildGain or info.factionID ~= 1168)) then
+    local format, name, change, changeString, session, repToGo, nextStandingText
+
+    name = info.name
+    change = info.change
+    session = info.session
+    repToGo = info.maximum - info.current
+
     if info.negative then -- Decreased reputation
+      changeString = ""
+
       if not info.isRenown then
         if (info.standingID >= 1 and not info.isFriend) then
-          REP:Print(REP.NEW_REP_COLOUR..string.format(FACTION_STANDING_DECREASED..REP_TXT.statsNextStanding, info.name, info.change, "", info.session, _G["FACTION_STANDING_LABEL"..info.standingID + 1], info.maximum - info.current))
+          format = FACTION_STANDING_DECREASED..REP_TXT.statsNextStanding
+          nextStandingText = _G["FACTION_STANDING_LABEL"..info.standingID + 1]
         else
-          REP:Print(REP.NEW_REP_COLOUR..string.format(FACTION_STANDING_DECREASED..REP_TXT.stats, info.name, info.change, "", info.session, info.maximum - info.current))
+          format = FACTION_STANDING_DECREASED..REP_TXT.stats
         end
       end
     else -- Increased reputation
+      changeString = "+"
+
       if info.isCapped then
-        REP:Print(REP.NEW_REP_COLOUR..string.format(FACTION_STANDING_INCREASED..REP_TXT.stats, info.name, info.change, "+", info.session, info.maximum - info.current))
+        format = FACTION_STANDING_INCREASED..REP_TXT.stats
       else
         if info.isRenown then
           if info.change >= (info.maximum - info.current) then
-            REP:Print(REP.NEW_REP_COLOUR..string.format(FACTION_STANDING_INCREASED..REP_TXT.statsNextStanding, info.name, info.change, "+", info.session, REP_TXT.renown.." "..(info.renown + 1) + 1, info.maximum - info.current))
+            format = FACTION_STANDING_INCREASED..REP_TXT.statsNextStanding
+            nextStandingText = REP_TXT.renown.." "..(info.renown + 1) + 1
           else
-            REP:Print(REP.NEW_REP_COLOUR..string.format(FACTION_STANDING_INCREASED..REP_TXT.statsNextStanding, info.name, info.change, "+", info.session, REP_TXT.renown.." "..info.renown + 1, info.maximum - info.current))
+            format = FACTION_STANDING_INCREASED..REP_TXT.statsNextStanding
+            nextStandingText = REP_TXT.renown.." "..info.renown + 1
           end
         elseif info.isFriend then
-          REP:Print(REP.NEW_REP_COLOUR..string.format(FACTION_STANDING_INCREASED..REP_TXT.statsNextStanding, info.name, info.change, "+", info.session, REP:GetFriendshipStandingLabelAsBackup(info), info.maximum - info.current))
+          format = FACTION_STANDING_INCREASED..REP_TXT.statsNextStanding
+          nextStandingText = REP:GetFriendshipStandingLabelAsBackup(info)
         else
           if REP_Data.Global.ShowBonusGainsInChat and info.hasBonusRepGain then
             local baseReputation = info.change / 2 -- Commendations are added last after other bonuses, so it's always 100% bonus, so half of total.
@@ -3230,21 +3223,27 @@ function REP:DumpReputationChangesToChatForSingleFaction(info)
             local changeMessage = tostring(info.change)..". (+"..tostring(bonusReputation).." bonus)"
             local factionStringWithBonus = FACTION_STANDING_INCREASED:gsub("%%d", "%%s")
 
+            change = changeMessage
+
             if info.standingID < 8 then
-              REP:Print(REP.NEW_REP_COLOUR..string.format(factionStringWithBonus..REP_TXT.statsNextStanding, info.name, changeMessage, "+", info.session, _G["FACTION_STANDING_LABEL"..info.standingID + 1], info.maximum - info.current))
+              format = factionStringWithBonus..REP_TXT.statsNextStanding
+              nextStandingText = _G["FACTION_STANDING_LABEL"..info.standingID + 1]
             else
-              REP:Print(REP.NEW_REP_COLOUR..string.format(factionStringWithBonus..REP_TXT.stats, info.name, changeMessage, "+", info.session, info.maximum - info.current))
+              format = factionStringWithBonus..REP_TXT.stats
             end
           else
             if info.standingID < 8 then
-              REP:Print(REP.NEW_REP_COLOUR..string.format(FACTION_STANDING_INCREASED..REP_TXT.statsNextStanding, info.name, info.change, "+", info.session, _G["FACTION_STANDING_LABEL"..info.standingID + 1], info.maximum - info.current))
+              format = FACTION_STANDING_INCREASED..REP_TXT.statsNextStanding
+              nextStandingText = _G["FACTION_STANDING_LABEL"..info.standingID + 1]
             else
-              REP:Print(REP.NEW_REP_COLOUR..string.format(FACTION_STANDING_INCREASED..REP_TXT.stats, info.name, info.change, "+", info.session, info.maximum - info.current))
+              format = FACTION_STANDING_INCREASED..REP_TXT.stats
             end
           end
         end
       end
     end
+
+    REP:PrintReputationChangesToChat{format = format, name = name, change = change, changeString = changeString, session = session, nextStandingText = nextStandingText, repToGo = repToGo}
   end
 
   REP:InitOrCheckSavedVariables()

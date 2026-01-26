@@ -3,16 +3,14 @@ local ReputationGuide = vars
 
 local factions = ReputationGuide.factions or {}
 ReputationGuide.factions = factions
+ReputationGuide._repSnapshot = {}
 
 local factionPanelFix = true
-local showParagonCount = false
 
 -- Thanks to the Pretty Reputation Addon (https://www.curseforge.com/wow/addons/pretty-reputation) for the factionPanelFix fix.
 function ReputationGuide:IndexFactions(isInitialLogin, isReloadingUi, forceFactionPanelFix)
   if not (isInitialLogin or isReloadingUi or forceFactionPanelFix) then return end
   
-  showParagonCount = REP_Data.Global.ShowParagonBar
-
   if ReputationGuide.AfterShadowLands then
     do
       for _, factionId in ipairs(REP_Orig_GetMajorFactionIDs()) do
@@ -64,8 +62,8 @@ function ReputationGuide:IndexFaction(factionData)
 
     if not factions[factionData.factionID].info then
       local info = {}
-      info["faction"] = factionData.name
       info["factionID"] = factionData.factionID
+      info["faction"] = factionData.name
       info["change"] = 0
       info["session"] = factions[factionData.factionID].session
       info["expansionID"] = factionData.expansionID
@@ -167,8 +165,8 @@ function ReputationGuide:getRepInfo(info)
     info["isWatched"] = factionData.isWatched
     info["hasBonusRepGain"] = factionData.hasBonusRepGain
 
-    info["paragon"] = ""
-    info["renown"] = ""
+    info["paragon"] = 0
+    info["renown"] = 0
     info["standingTextNext"] = ""
     info["reward"] = ""
 
@@ -193,13 +191,15 @@ function ReputationGuide:getRepInfo(info)
           if not isCapped or not isParagon then return info end
           if isCapped then info["isCapped"] = true end
   
-          local currentValue, threshold, _, hasRewardPending = REP_Orig_GetFactionParagonInfo(info.factionID)
-          local paragonLevel = (currentValue - (currentValue % threshold))/threshold
+          local currentValue, threshold, totalValue, hasRewardPending = REP_Orig_GetFactionParagonInfo(info.factionID)
+          
+          if not currentValue then currentValue = 0 end
+          if not totalValue then totalValue = 0 end
+          if not threshold then threshold = 10000 end
+          
+          local paragonLevel = (totalValue - (totalValue % threshold)) / threshold
 
-          if showParagonCount and paragonLevel > 0 then
-            info["paragon"] = info["paragon"] .. paragonLevel
-          end
-  
+          info["paragon"] = paragonLevel
           info["standingTextNext"] = ReputationGuide:getFactionLabel("paragon") .. " " .. (paragonLevel + 1)
           info["standingID"] = 9
           info["standingIDNext"] = 9
@@ -207,11 +207,6 @@ function ReputationGuide:getRepInfo(info)
           if hasRewardPending then
             local reward = "|A:ParagonReputation_Bag:0:0|a"
             info["reward"] = reward
-            info["paragon"] = info["paragon"] .. reward
-
-            if not showParagonCount then
-              info["standingText"] = info["standingText"] .. " " .. reward
-            end
           end
   
           info["current"] = mod(currentValue, threshold)
@@ -243,20 +238,16 @@ function ReputationGuide:getRepInfo(info)
 
     if ReputationGuide.AfterWoD then
       if (REP_Orig_IsFactionParagon(info.factionID)) then
-        local currentValue, threshold, _, hasRewardPending = REP_Orig_GetFactionParagonInfo(info.factionID);
+        local currentValue, threshold, totalValue, hasRewardPending = REP_Orig_GetFactionParagonInfo(info.factionID);
 
         if not currentValue then currentValue = 0 end
+        if not totalValue then totalValue = 0 end
         if not threshold then threshold = 10000 end
 
-        -- ((math.floor(currentValue/threshold)*threshold)/10000) - (hasRewardPending and 1 or 0)
-        -- local realValue = currentValue % threshold
-        local paragonLevel = (currentValue - (currentValue % threshold))/threshold
+        local paragonLevel = (totalValue - (totalValue % threshold))/threshold
+
+        info["paragon"] = paragonLevel
         info["standingText"] = ReputationGuide:getFactionLabel("paragon")
-        
-        if showParagonCount and paragonLevel > 0 then
-          info["paragon"] =  info["paragon"] .. paragonLevel
-        end
-  
         info["standingTextNext"] = ReputationGuide:getFactionLabel("paragon") .. " " .. (paragonLevel + 1)
         info["standingID"] = 9
         info["standingIDNext"] = 9
@@ -264,11 +255,6 @@ function ReputationGuide:getRepInfo(info)
         if hasRewardPending then
           local reward = "|A:ParagonReputation_Bag:0:0|a"
           info["reward"] = reward
-          info["paragon"] =  info["paragon"] .. reward
-  
-          if not showParagonCount then
-            info["standingText"] = info["standingText"] .. " " .. reward
-          end
         end
   
         info["current"] = mod(currentValue, threshold)
@@ -351,4 +337,53 @@ end
 
 function ReputationGuide:getFactionSession(info)
   return factions[info.factionID] and (factions[info.factionID].session + (info.change * ((info.negative and -1 or 1)))) or 0
+end
+
+function ReputationGuide:BuildReputationSnapshot()
+  local snapshot = {}
+
+  for factionID, faction in pairs(ReputationGuide.factions) do
+    if faction.info then
+      -- OLD INFO
+      local oldInfo = faction.info
+      local oldBottom = oldInfo.bottom or 0
+      local oldTop = oldInfo.top or 0
+      local oldCurrent = oldInfo.current or 0
+      local oldAbsolute = oldBottom + oldCurrent
+      local oldStandingID = oldInfo.standingID or 0
+      local oldRenown = oldInfo.renown or 0
+      local oldParagon = oldInfo.paragon or 0
+      -- NEW INFO
+      local newInfo = ReputationGuide:getRepInfo(oldInfo) or {}
+      local newBottom = newInfo.bottom or 0
+      local newTop = newInfo.top or 0
+      local newCurrent = newInfo.current or 0
+      local newAbsolute = newBottom + newCurrent
+      local newStandingID = newInfo.standingID or 0
+      local newRenown = newInfo.renown or 0
+      local newParagon = newInfo.paragon or 0
+
+      local change = 0
+      local tierChanged = (oldStandingID ~= newStandingID) or (oldRenown ~= newRenown) or (oldParagon ~= newParagon)
+
+      if not tierChanged then
+        change = newAbsolute - oldAbsolute
+      else
+        if (newStandingID > oldStandingID) or (newRenown > oldRenown) or (newParagon > oldParagon) then
+          change = (oldTop - oldAbsolute) + newCurrent
+        else
+          change = -((oldAbsolute - oldBottom) + (newTop - newAbsolute))
+        end
+      end
+
+      snapshot[factionID] = change or 0
+    end
+  end
+
+  return snapshot
+end
+
+function ReputationGuide:TakeReputationSnapshot()
+  local snapshot = ReputationGuide:BuildReputationSnapshot()
+  self._repSnapshot = snapshot
 end
