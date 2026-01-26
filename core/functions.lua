@@ -561,6 +561,15 @@ function ReputationGuide:HookWatchedFactionBar()
     end
   end
 end
+---------------------------------------------------
+function ReputationGuide:IsFactionUpdateEvent(event)
+  if event == "UPDATE_FACTION" then return true end
+
+  return ReputationGuide.AfterShadowLands and (
+    event == "MAJOR_FACTION_RENOWN_LEVEL_CHANGED"
+    or event == "MAJOR_FACTION_UNLOCKED"
+  )
+end
 ------------------------------
 -- Reputation Functions --
 ------------------------------
@@ -869,4 +878,50 @@ function ReputationGuide:GetFactionDataToBuildReputationlist()
   factionDataObj.factionNameLowercase = factionNameLowercase
 
   return factionDataObj or {}
+end
+---------------------------------------------------
+function ReputationGuide:DetectReputationChanges()
+  local changes = {}
+  local oldSnapshot = ReputationGuide._repSnapshot or {}
+  local newSnapshot = ReputationGuide:BuildReputationSnapshot()
+
+  for factionID, newValue in pairs(newSnapshot) do
+    local oldValue = oldSnapshot[factionID]
+
+    if oldValue == nil or newValue ~= oldValue then
+      local info = {}
+      info["factionID"] = factionID
+
+      if type(newValue) == "number" then
+        info["change"] = math.abs(newValue)
+        if tonumber(newValue) < 0 then
+          info["negative"] = true
+        end
+      else
+        info["change"] = 0
+      end
+
+      if oldValue == nil then
+        info = ReputationGuide:getFactionInfoForNewFaction(info)
+
+        changes[#changes + 1] = {
+          factionID = factionID,
+          change = newValue,
+          isNewFaction = true,
+          info = info
+        }
+      elseif newValue ~= oldValue then
+        info = ReputationGuide:getFactionInfo(info)
+
+        changes[#changes + 1] = {
+          factionID = factionID,
+          change = newValue,
+          isNewFaction = false,
+          info = info
+        }
+      end
+    end
+  end
+
+  return changes
 end
